@@ -1,5 +1,5 @@
-import dev.wycey.mido.fraiselait.SerialDevice;
-import dev.wycey.mido.fraiselait.commands.CommandBuilder;
+import dev.wycey.mido.fraiselait.builtins.FraiselaitDevice;
+import dev.wycey.mido.fraiselait.builtins.commands.CommandBuilder;
 
 import java.time.Duration;
 
@@ -7,28 +7,28 @@ import java.time.Duration;
  * Fraiselait で音を鳴らすためのクラス。
  */
 public class FraiselaitOutput implements PlaybackOutput {
-  private final SerialDevice device;
+  private final FraiselaitDevice device;
 
-  public FraiselaitOutput(SerialDevice device) {
+  public FraiselaitOutput(FraiselaitDevice device) {
     this.device = device;
   }
 
-  public SerialDevice getDevice() {
+  public FraiselaitDevice getDevice() {
     return device;
   }
 
   @Override
   public void tone(double frequency) {
-    device.send(new CommandBuilder().tone((int) Math.round(frequency)).build(), false);
+    device.sendCommand(new CommandBuilder().tone((int) Math.round(frequency)).build());
   }
 
   @Override
   public void tone(double frequency, Duration duration) {
-    device.send(new CommandBuilder().tone((int) Math.round(frequency), duration.toMillis()).build(), false);
+    device.sendCommand(new CommandBuilder().tone((int) Math.round(frequency), duration.toMillis()).build());
   }
 
   @Override
   public void noTone() {
-    device.send(new CommandBuilder().noTone().build(), false);
+    device.sendCommand(new CommandBuilder().noTone().build());
   }
 }

@@ -10,9 +10,9 @@ import java.util.*;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
-import dev.wycey.mido.fraiselait.*;
-import dev.wycey.mido.fraiselait.commands.*;
-import dev.wycey.mido.fraiselait.orchestrators.MultiDeviceOrchestrator;
+import dev.wycey.mido.fraiselait.builtins.*;
+import dev.wycey.mido.fraiselait.builtins.commands.*;
+import dev.wycey.mido.fraiselait.builtins.orchestrators.MultiDeviceOrchestrator;
 
 // From Catppuccin Latte
 class ColorScheme {
@@ -628,9 +628,10 @@ JButton metronomeButton;
 
 JButton fraiselaitRefreshButton;
 
-MultiDeviceOrchestrator orchestrator = new MultiDeviceOrchestrator(this, 152000);
-Set<SerialDevice> devices;
-SerialDevice device;
+MultiDeviceOrchestrator orchestrator = new MultiDeviceOrchestrator(152000);
+
+Set<FraiselaitDevice> devices;
+FraiselaitDevice device;
 
 void setup() {
   size(1200, 800);
@@ -882,12 +883,12 @@ void draw() {
       devices = newDevices;
   }
 
-  if (device != null && device.getPhase() != SerialDevicePhase.RUNNING)
+  if (device != null && device.getStatus() != ConnectionStatus.CONNECTED)
     device = null;
 
   if (device == null && devices != null && devices.size() != 0) {
     for (final var d : devices) {
-      if (d.getPhase() == SerialDevicePhase.RUNNING)
+      if (d.getStatus() == ConnectionStatus.CONNECTED)
         device = d;
     }
   }
