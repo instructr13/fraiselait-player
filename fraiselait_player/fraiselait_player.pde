@@ -1,5 +1,3 @@
-import processing.serial.*;
-
 import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -624,6 +622,10 @@ JSpinner bpmField;
 JSpinner beatsField;
 JButton metronomeButton;
 
+// Notes
+
+JComboBox waveformCombo;
+
 // Fraiselait
 
 JButton fraiselaitRefreshButton;
@@ -714,7 +716,7 @@ void refreshScoreFile() {
     player = new MultiTrackPlayer(session);
 
     player.open();
-    
+
     autoplayWindowToggleButton.setText("閉じる");
     autoplayWindowToggleButton.setForeground(pColorToAWT(ColorScheme.Text));
     autoplayWindowToggleButton.setBackground(pColorToAWT(ColorScheme.Surface0));
@@ -755,6 +757,12 @@ void toggleMetronome() {
 
     metronomeButton.setText("開始");
   }
+}
+
+void setWaveform(WaveformType type) {
+  if (session != null && session.isPlaying()) return;
+ 
+  orchestrator.sendAll(new CommandBuilder().changeWaveform(type).build());
 }
 
 protected PSurface initSurface() {
@@ -834,6 +842,17 @@ protected PSurface initSurface() {
   metronomeButton.addActionListener((e) -> { toggleMetronome(); });
   pane.add(metronomeButton);
 
+  // Notes
+
+  waveformCombo = new JComboBox(
+    new DefaultComboBoxModel(WaveformType.values())
+  );
+  waveformCombo.setForeground(pColorToAWT(ColorScheme.Text));
+  waveformCombo.setBackground(pColorToAWT(ColorScheme.Surface0));
+  waveformCombo.setBounds(1075, 173, 90, 30);
+  waveformCombo.addActionListener((e) -> { setWaveform((WaveformType) waveformCombo.getSelectedItem()); });
+  pane.add(waveformCombo);
+
   // Friaselait
 
   fraiselaitRefreshButton = new JButton("更新");
@@ -855,7 +874,7 @@ void draw() {
 
   if (device != null) {
     if (lastNote != null && !lastNote.equals(prevLastNote)) {
-      new FraiselaitOutput(device).tone(lastNote.toFreq());
+      new FraiselaitOutput(device).tone(lastNote.toFreq(), 1.0);
 
       prevLastNote = lastNote;
     } else if (lastNote == null && prevLastNote != null) {
@@ -970,7 +989,9 @@ void draw() {
   r.drawText(currentNotes.toString(), new Point(980, 60));
 
   r.drawText("A0 Freq.: " + Double.toString(Notes.A0_FREQ) + "Hz", new Point(980, 84));
-  r.drawText("Edit Note.java to\nchange A0 freq.", new Point(980, 124));
+  r.drawText("Edit Note.java to\nchange A0 freq.", new Point(980, 114));
+
+  r.drawText("Waveform", new Point(980, 180));
 
   // Fraiselait
 

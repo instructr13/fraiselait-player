@@ -509,9 +509,9 @@ public class PlayerSession implements AutoCloseable {
 
         if (soundData.frequency != null) {
           if (soundData.duration != null) {
-            output.tone(soundData.frequency, soundData.duration);
+            output.tone(soundData.frequency, 1.0, soundData.duration);
           } else {
-            output.tone(soundData.frequency);
+            output.tone(soundData.frequency, 1.0);
           }
 
           if (!it.hasNext() && part.isLoop())

@@ -1,4 +1,5 @@
 import dev.wycey.mido.fraiselait.builtins.FraiselaitDevice;
+import dev.wycey.mido.fraiselait.builtins.WaveformType;
 import dev.wycey.mido.fraiselait.builtins.commands.CommandBuilder;
 
 import java.time.Duration;
@@ -18,13 +19,18 @@ public class FraiselaitOutput implements PlaybackOutput {
   }
 
   @Override
-  public void tone(double frequency) {
-    device.sendCommand(new CommandBuilder().tone((int) Math.round(frequency)).build());
+  public void changeWaveform(WaveformType type) {
+    device.sendCommand(new CommandBuilder().changeWaveform(type).build());
   }
 
   @Override
-  public void tone(double frequency, Duration duration) {
-    device.sendCommand(new CommandBuilder().tone((int) Math.round(frequency), duration.toMillis()).build());
+  public void tone(double frequency, double volume) {
+    device.sendCommand(new CommandBuilder().tone((float) frequency, (float) volume).build());
+  }
+
+  @Override
+  public void tone(double frequency, double volume, Duration duration) {
+    device.sendCommand(new CommandBuilder().tone((float) frequency, (float) volume, duration.toMillis()).build());
   }
 
   @Override

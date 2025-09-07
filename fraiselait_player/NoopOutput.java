@@ -1,3 +1,5 @@
+import dev.wycey.mido.fraiselait.builtins.WaveformType;
+
 import java.time.Duration;
 
 /**
@@ -5,10 +7,13 @@ import java.time.Duration;
  */
 public class NoopOutput implements PlaybackOutput {
   @Override
-  public void tone(double frequency) {}
+  public void changeWaveform(WaveformType type) {}
 
   @Override
-  public void tone(double frequency, Duration duration) {}
+  public void tone(double frequency, double volume) {}
+
+  @Override
+  public void tone(double frequency, double volume, Duration duration) {}
 
   @Override
   public void noTone() {}

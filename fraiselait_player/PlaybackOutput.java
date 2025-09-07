@@ -1,12 +1,16 @@
+import dev.wycey.mido.fraiselait.builtins.WaveformType;
+
 import java.time.Duration;
 
 /**
  * 再生用のインターフェース。
  */
 public interface PlaybackOutput {
-  void tone(double frequency);
+  void changeWaveform(WaveformType type);
 
-  void tone(double frequency, Duration duration);
+  void tone(double frequency, double volume);
+
+  void tone(double frequency, double volume, Duration duration);
 
   void noTone();
 }
