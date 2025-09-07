@@ -639,6 +639,7 @@ void setup() {
   size(1200, 800);
   windowTitle("Fraiselait Player");
 
+  surface.setVisible(true);
   orchestrator.start();
 }
 
