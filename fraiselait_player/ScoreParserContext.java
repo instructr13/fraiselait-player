@@ -63,7 +63,21 @@ public class ScoreParserContext {
     return expect(ScoreToken.CommaToken.class);
   }
 
-  public void expectNewlineOrEOF() {
+  public void expectEndOfCommand() {
+    ScoreToken<?> token = peek();
+
+    if (!(token instanceof ScoreToken.SemicolonToken) &&
+        !(token instanceof ScoreToken.NewlineToken) && !(token instanceof ScoreToken.EOFToken)) {
+      throw new ScoreParseException(
+          "Expected semicolon, newline, or EOF but got %s".formatted(
+              token.getClass().getSimpleName()
+          ), token.getLineNumber(), token.getPosition());
+    }
+
+    position++;
+  }
+
+  public void expectNewLineOrEOF() {
     ScoreToken<?> token = peek();
 
     if (!(token instanceof ScoreToken.NewlineToken) && !(token instanceof ScoreToken.EOFToken)) {

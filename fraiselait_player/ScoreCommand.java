@@ -23,7 +23,7 @@ public abstract class ScoreCommand {
       final var offsetToken = context.expect(ScoreToken.NumberToken.class);
       context.expectComma();
       final var baseA4FrequencyToken = context.expect(ScoreToken.NumberToken.class);
-      context.expectNewlineOrEOF();
+      context.expectEndOfCommand();
 
       final var header = new Header(
           bpmToken.getLiteral().floatValue(),
@@ -70,7 +70,7 @@ public abstract class ScoreCommand {
       final var durationToken = context.expect(ScoreToken.NumberToken.class);
       context.expectComma();
       final var nextNoteDurationToken = context.expect(ScoreToken.NumberToken.class);
-      context.expectNewlineOrEOF();
+      context.expectEndOfCommand();
 
       final var playNoteCommand = new PlayNote(
           frequency, durationToken.getLiteral().floatValue(), nextNoteDurationToken.getLiteral().floatValue()
@@ -103,7 +103,7 @@ public abstract class ScoreCommand {
       context.expect(ScoreToken.RestToken.class);
       context.expectComma();
       final var durationToken = context.expect(ScoreToken.NumberToken.class);
-      context.expectNewlineOrEOF();
+      context.expectEndOfCommand();
 
       final var restCommand = new Rest(
           durationToken.getLiteral().floatValue()
@@ -128,7 +128,7 @@ public abstract class ScoreCommand {
       context.expectKeyword(ScoreKeywords.BPM.getLiteral());
       context.expectComma();
       final var bpmToken = context.expect(ScoreToken.NumberToken.class);
-      context.expectNewlineOrEOF();
+      context.expectEndOfCommand();
 
       final var changeBPMCommand = new ChangeBPM(
           bpmToken.getLiteral().floatValue()
@@ -153,7 +153,7 @@ public abstract class ScoreCommand {
       context.expectKeyword(ScoreKeywords.MEASURE.getLiteral());
       context.expectComma();
       final var measureToken = context.expect(ScoreToken.NumberToken.class);
-      context.expectNewlineOrEOF();
+      context.expectEndOfCommand();
 
       final var changeMeasureCommand = new ChangeMeasure(
           measureToken.getLiteral().intValue()
@@ -178,7 +178,7 @@ public abstract class ScoreCommand {
       context.expectKeyword(ScoreKeywords.VOL.getLiteral());
       context.expectComma();
       final var volumeToken = context.expect(ScoreToken.NumberToken.class);
-      context.expectNewlineOrEOF();
+      context.expectEndOfCommand();
 
       final float volumeValue = volumeToken.getLiteral().floatValue();
       if (volumeValue < 0.0f || volumeValue > 1.0f) {
@@ -244,7 +244,7 @@ public abstract class ScoreCommand {
         function = TimingFunctions.LINEAR;
       }
 
-      context.expectNewlineOrEOF();
+      context.expectEndOfCommand();
 
       context.addCommand(new Pitch(
           beforeFrequencyToken.getLiteral(),
@@ -308,7 +308,7 @@ public abstract class ScoreCommand {
       final var nextNoteDurationToken = context.expect(ScoreToken.NumberToken.class);
       context.expectComma();
       final var countToken = context.expect(ScoreToken.NumberToken.class);
-      context.expectNewlineOrEOF();
+      context.expectEndOfCommand();
 
       context.addCommand(new Vibrato(
           frequency1Token.getLiteral(),
@@ -352,7 +352,7 @@ public abstract class ScoreCommand {
 
     public static void parse(ScoreParserContext context) {
       context.expectKeyword(ScoreKeywords.REPLAY.getLiteral());
-      context.expectNewlineOrEOF();
+      context.expectEndOfCommand();
 
       context.addCommand(INSTANCE);
     }
@@ -370,7 +370,7 @@ public abstract class ScoreCommand {
 
     public static void parse(ScoreParserContext context) {
       context.expectKeyword(ScoreKeywords.STOP.getLiteral());
-      context.expectNewlineOrEOF();
+      context.expectEndOfCommand();
 
       context.addCommand(INSTANCE);
     }

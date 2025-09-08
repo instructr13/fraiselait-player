@@ -52,8 +52,10 @@ public class ScoreLexer {
     final var c = peek();
 
     if (Character.isWhitespace(c)) {
-      if (ScoreToken.NewlineToken.isNewline(String.valueOf(c))) {
-        addToken(new ScoreToken.NewlineToken(line));
+      final var stringValue = String.valueOf(c);
+
+      if (ScoreToken.NewlineToken.isNewline(stringValue)) {
+        addToken(new ScoreToken.NewlineToken(stringValue, line));
 
         line++;
         linePosition = 0;
@@ -72,6 +74,14 @@ public class ScoreLexer {
 
     if (ScoreToken.CommaToken.isComma(String.valueOf(c))) {
       addToken(new ScoreToken.CommaToken(line, linePosition));
+
+      advance();
+
+      return;
+    }
+
+    if (ScoreToken.SemicolonToken.isSemicolon(String.valueOf(c))) {
+      addToken(new ScoreToken.SemicolonToken(line, linePosition));
 
       advance();
 

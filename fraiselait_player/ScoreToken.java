@@ -1,4 +1,5 @@
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -174,15 +175,31 @@ public abstract class ScoreToken<T> {
     }
   }
 
-  public static class NewlineToken extends ScoreToken<Void> {
-    private static final String NEWLINE_SYMBOL = "\n";
+  public static class SemicolonToken extends ScoreToken<Void> {
+    private static final String SEMICOLON_SYMBOL = ";";
 
-    public NewlineToken(int lineNumber) {
-      super("\n", null, lineNumber, 0);
+    public SemicolonToken(int lineNumber, int position) {
+      super(SEMICOLON_SYMBOL, null, lineNumber, position);
+    }
+
+    public static boolean isSemicolon(String value) {
+      return SEMICOLON_SYMBOL.equals(value);
+    }
+  }
+
+  public static class NewlineToken extends ScoreToken<Void> {
+    private static final List<String> NEWLINE_SYMBOLS = List.of("\n");
+
+    public NewlineToken(String value, int lineNumber) {
+      super(value, null, lineNumber, 0);
+
+      if (!isNewline(value)) {
+        throw new ScoreParseException("Invalid newline symbol: " + value, lineNumber, 0);
+      }
     }
 
     public static boolean isNewline(String value) {
-      return NEWLINE_SYMBOL.equals(value);
+      return NEWLINE_SYMBOLS.contains(value);
     }
   }
 
