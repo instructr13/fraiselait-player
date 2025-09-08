@@ -77,6 +77,9 @@ public class PlaybackPart {
     final var commands = score.getCommands();
     var loop = false;
 
+    // Set default oscillator waveform at the beginning
+    soundData.add(SoundData.changeWaveform(playbackData.get(), currentOffset, currentWaveform));
+
     for (int i = 0; i < commands.size(); i++) {
       final var command = commands.get(i);
 
