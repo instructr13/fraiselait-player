@@ -249,7 +249,9 @@ public class PlaybackPart {
         for (int j = 0; j < frequencies.size(); j++) {
           final var frequency = frequencies.get(j);
 
-          final var t = j * unitT;
+          var t = j * unitT;
+
+          if (t > 1) t = 1;
 
           final var actualVolume = currentVolume * currentOscillator.calculateVolume(t);
 
@@ -306,6 +308,8 @@ public class PlaybackPart {
           final var frequency = frequencies.get(j);
 
           final var t = j * unitT;
+
+          if (t > 1) t = 1;
 
           final var actualVolume = currentVolume * currentOscillator.calculateVolume(t);
 
