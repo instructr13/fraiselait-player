@@ -167,6 +167,34 @@ public abstract class ScoreCommand {
     }
   }
 
+  public static class ChangeVolume extends ScoreCommand {
+    private final float volume; // 0.0 to 1.0
+
+    public ChangeVolume(float volume) {
+      this.volume = volume;
+    }
+
+    public static void parse(ScoreParserContext context) {
+      context.expectKeyword(ScoreKeywords.VOL.getLiteral());
+      context.expectComma();
+      final var volumeToken = context.expect(ScoreToken.NumberToken.class);
+      context.expectNewlineOrEOF();
+
+      final float volumeValue = volumeToken.getLiteral().floatValue();
+      if (volumeValue < 0.0f || volumeValue > 1.0f) {
+        throw new ScoreParseException(
+            "Volume must be between 0.0 and 1.0, but got: " + volumeValue,
+            volumeToken.getLineNumber(), volumeToken.getPosition());
+      }
+
+      context.addCommand(new ChangeVolume(volumeValue));
+    }
+
+    public float getVolume() {
+      return volume;
+    }
+  }
+
   public static class Pitch extends ScoreCommand {
     private final Frequency beforeFrequency;
     private final Frequency afterFrequency;
@@ -184,8 +212,6 @@ public abstract class ScoreCommand {
       this.quality = quality;
       this.function = function;
     }
-
-    // TODO: allow raw frequency
 
     public static void parse(ScoreParserContext context) {
       context.expectKeyword(ScoreKeywords.PITCH.getLiteral());

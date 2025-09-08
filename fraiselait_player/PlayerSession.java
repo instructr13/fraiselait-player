@@ -16,26 +16,28 @@ import java.util.function.UnaryOperator;
 class SoundData {
   final PlaybackData playbackData;
   final Double frequency;
+  final Double volume;
   final Duration offset;
   final Duration duration;
 
-  private SoundData(PlaybackData playbackData, Double frequency, Duration offset, Duration duration) {
+  private SoundData(PlaybackData playbackData, Double frequency, Double volume, Duration offset, Duration duration) {
     this.playbackData = playbackData;
     this.frequency = frequency;
+    this.volume = volume;
     this.offset = offset;
     this.duration = duration;
   }
 
-  static SoundData tone(PlaybackData playbackData, double frequency, Duration offset, Duration duration) {
-    return new SoundData(playbackData, frequency, offset, duration);
+  static SoundData tone(PlaybackData playbackData, double frequency, double volume, Duration offset, Duration duration) {
+    return new SoundData(playbackData, frequency, volume, offset, duration);
   }
 
-  static SoundData tone(PlaybackData playbackData, double frequency, Duration offset) {
-    return new SoundData(playbackData, frequency, offset, null);
+  static SoundData tone(PlaybackData playbackData, double frequency, double volume, Duration offset) {
+    return new SoundData(playbackData, frequency, volume, offset, null);
   }
 
   static SoundData noTone(PlaybackData playbackData, Duration offset) {
-    return new SoundData(playbackData, null, offset, null);
+    return new SoundData(playbackData, null, null, offset, null);
   }
 }
 
@@ -58,8 +60,9 @@ class PlaybackPart {
 
     var currentBPM = score.getStartingBPM();
     var currentMeasure = score.getStartingMeasure();
+    var currentVolume = 1f;
 
-    playbackData = new AtomicReference<>(new PlaybackData(0, currentBPM, currentMeasure));
+    playbackData = new AtomicReference<>(new PlaybackData(0, currentBPM, currentMeasure, 1));
 
     var currentMeasureMillis = Notes.toDurationMillis(currentBPM, currentMeasure);
     var currentOffset = Duration.ofNanos(Math.round(score.getOffset() * 1_000_000));
@@ -91,7 +94,7 @@ class PlaybackPart {
         continue;
       }
 
-      final var playbackData = new PlaybackData(i, currentBPM, currentMeasure);
+      final var playbackData = new PlaybackData(i, currentBPM, currentMeasure, currentVolume);
 
       if (command instanceof ScoreCommand.Rest) {
         soundData.add(SoundData.noTone(playbackData, currentOffset));
@@ -111,6 +114,7 @@ class PlaybackPart {
 
       if (command instanceof ScoreCommand.PlayNote) {
         final var playNote = (ScoreCommand.PlayNote) command;
+
         final var duration = playNote.getDuration();
         final var nextNoteDuration = playNote.getNextNoteDuration();
 
@@ -120,11 +124,12 @@ class PlaybackPart {
           soundData.add(SoundData.tone(
               playbackData,
               frequency,
+              currentVolume,
               currentOffset,
               Duration.ofNanos(Math.round(duration * currentMeasureMillis * 1_000_000))
           ));
         else
-          soundData.add(SoundData.tone(playbackData, frequency, currentOffset));
+          soundData.add(SoundData.tone(playbackData, frequency, currentVolume, currentOffset));
 
         currentOffset = currentOffset.plus(
             Duration.ofNanos(Math.round(nextNoteDuration * currentMeasureMillis * 1_000_000))
@@ -135,6 +140,7 @@ class PlaybackPart {
 
       if (command instanceof ScoreCommand.Pitch) {
         final var pitch = (ScoreCommand.Pitch) command;
+
         final var duration = pitch.getDuration();
         final var nextNoteDuration = pitch.getNextNoteDuration();
 
@@ -167,6 +173,7 @@ class PlaybackPart {
           soundData.add(SoundData.tone(
               playbackData,
               freq,
+              currentVolume,
               currentOffset,
               fragmentDuration
           ));
@@ -188,6 +195,7 @@ class PlaybackPart {
 
       if (command instanceof ScoreCommand.Vibrato) {
         final var vibrato = (ScoreCommand.Vibrato) command;
+
         final var duration = vibrato.getDuration();
         final var nextNoteDuration = vibrato.getNextNoteDuration();
 
@@ -215,6 +223,7 @@ class PlaybackPart {
           soundData.add(SoundData.tone(
               playbackData,
               freq,
+              currentVolume,
               currentOffset,
               fragmentDuration
           ));
@@ -230,9 +239,15 @@ class PlaybackPart {
               Duration.ofNanos(Math.round((nextNoteDuration - duration) * currentMeasureMillis * 1_000_000))
           );
         }
+
+        continue;
       }
 
-      continue;
+      if (command instanceof ScoreCommand.ChangeVolume) {
+        currentVolume = ((ScoreCommand.ChangeVolume) command).getVolume();
+
+        continue;
+      }
     }
 
     this.soundData = soundData;
@@ -347,6 +362,10 @@ public class PlayerSession implements AutoCloseable {
 
   public int getMeasureFor(int partIndex) {
     return getPlaybackDataFor(partIndex).getMeasure();
+  }
+
+  public float getVolumeFor(int partIndex) {
+    return getPlaybackDataFor(partIndex).getVolume();
   }
 
   /**

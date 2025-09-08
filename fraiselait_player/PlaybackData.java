@@ -1,12 +1,14 @@
 public class PlaybackData {
-  final int index;
-  final float bpm;
-  final int measure;
+  private final int index;
+  private final float bpm;
+  private final int measure;
+  private final float volume;
 
-  public PlaybackData(int index, float bpm, int measure) {
+  public PlaybackData(int index, float bpm, int measure, float volume) {
     this.index = index;
     this.bpm = bpm;
     this.measure = measure;
+    this.volume = volume;
   }
 
   public int getIndex() {
@@ -19,6 +21,10 @@ public class PlaybackData {
 
   public int getMeasure() {
     return measure;
+  }
+
+  public float getVolume() {
+    return volume;
   }
 
   @Override
@@ -34,6 +40,7 @@ public class PlaybackData {
     int result = index;
     result = 31 * result + Float.hashCode(bpm);
     result = 31 * result + measure;
+    result = 31 * result + Float.hashCode(volume);
     return result;
   }
 
@@ -43,6 +50,7 @@ public class PlaybackData {
         "index=" + index +
         ", bpm=" + bpm +
         ", measure=" + measure +
+        ", volume=" + volume +
         ')';
   }
 }

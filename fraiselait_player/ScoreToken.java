@@ -8,6 +8,7 @@ enum ScoreKeywords {
   REPLAY("REPLAY"),
   BPM("BPM"),
   MEASURE("MEASURE"),
+  VOL("VOL"),
   PITCH("PITCH"),
   VIB("VIB"),
   DEFINE("DEFINE");

@@ -438,6 +438,12 @@ class MultiTrackPlayer {
       r.drawText("Measure", new Point(lineOffset.x + 10, textOffset), ColorScheme.Peach);
       inner.textAlign(RIGHT, CENTER);
       r.drawText(Integer.toString(changeMeasure.getMeasure()), new Point(lineOffset.x + lineSize.x - 10, textOffset));
+    } else if (command instanceof ScoreCommand.ChangeVolume) {
+      final var changeVolume = (ScoreCommand.ChangeVolume) command;
+
+      r.drawText("Volume", new Point(lineOffset.x + 10, textOffset), ColorScheme.Lavender);
+      inner.textAlign(RIGHT, CENTER);
+      r.drawText(Float.toString(changeVolume.getVolume()), new Point(lineOffset.x + lineSize.x - 10, textOffset));
     } else if (command instanceof ScoreCommand.Rest) {
       final var rest = (ScoreCommand.Rest) command;
 
