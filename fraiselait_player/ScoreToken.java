@@ -34,8 +34,8 @@ enum ScoreKeywords {
 public abstract class ScoreToken<T> {
   private final String lexeme;
   private final Lazy<T> literal;
-  private final int lineNumber;
-  private final int position;
+  private int lineNumber;
+  private int position;
 
   protected ScoreToken(String lexeme, T literal, int lineNumber, int position) {
     this.lexeme = lexeme;
@@ -65,6 +65,13 @@ public abstract class ScoreToken<T> {
 
   public int getPosition() {
     return position;
+  }
+
+  public ScoreToken<T> withPosition(int lineNumber, int position) {
+    this.lineNumber = lineNumber;
+    this.position = position;
+
+    return this;
   }
 
   @Override

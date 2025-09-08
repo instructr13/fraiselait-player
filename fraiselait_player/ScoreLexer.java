@@ -6,15 +6,33 @@ import java.util.Map;
 public class ScoreLexer {
   private final String source;
   private final List<ScoreToken<?>> tokens = new ArrayList<>();
-  private final Map<String, String> definitions = new HashMap<>();
+  private final Map<String, List<ScoreToken<?>>> definitions = new HashMap<>();
+  private final int depth;
   private int position = 0;
   private int startPosition = 0;
   private int line = 1;
   private int startLinePosition = 0;
   private int linePosition = 0;
+  private int baseLine = 0;
+  private int baseLinePosition = 0;
 
   public ScoreLexer(String source) {
     this.source = source;
+    this.depth = 0;
+  }
+
+  private ScoreLexer(String source, int baseLine, int baseLinePosition, Map<String, List<ScoreToken<?>>> definitions, int depth) {
+    this.source = source;
+    this.depth = depth;
+
+    this.baseLine = baseLine;
+    this.baseLinePosition = baseLinePosition;
+
+    this.definitions.putAll(definitions);
+  }
+
+  private ScoreLexer createSubLexer(String source) {
+    return new ScoreLexer(source, line, startLinePosition, getDefinitions(), depth + 1);
   }
 
   public List<ScoreToken<?>> tokenize() {
@@ -85,7 +103,7 @@ public class ScoreLexer {
       return;
     }
 
-    throw new ScoreParseException("Unexpected character: " + c, line, linePosition);
+    throw new ScoreParseException("Unexpected character: " + c, line + baseLine, linePosition + baseLinePosition);
   }
 
   private boolean processNote(int offset) {
@@ -100,9 +118,6 @@ public class ScoreLexer {
     }
 
     var text = source.substring(actualStartPosition, position);
-
-    // Replace defined symbols
-    text = resolveDefinition(text);
 
     if (!ScoreToken.NoteToken.isNote(text)) {
       position = oldPosition; // roll back
@@ -127,8 +142,13 @@ public class ScoreLexer {
 
     var text = source.substring(startPosition, position);
 
-    // Replace defined symbols
-    text = resolveDefinition(text);
+    if (definitions.containsKey(text)) {
+      final var updatedTokens = definitions.get(text).stream().map(token -> token.withPosition(line, linePosition)).toList();
+
+      tokens.addAll(updatedTokens);
+
+      return;
+    }
 
     if (ScoreToken.KeywordToken.isKeyword(text)) {
       addToken(new ScoreToken.KeywordToken(text, line, startLinePosition));
@@ -140,31 +160,6 @@ public class ScoreLexer {
       return;
 
     addToken(new ScoreToken.IdentifierToken(text, line, linePosition));
-  }
-
-  private String resolveDefinition(String text) {
-    if (definitions.containsKey(text)) {
-      // Detect recursive definition
-      if (isProcessingDefinition(text)) {
-        throw new ScoreParseException("Recursive definition detected: " + text, line, startLinePosition);
-      }
-
-      return resolveDefinition(definitions.get(text));
-    }
-
-    return text;
-  }
-
-  private boolean isProcessingDefinition(String name) {
-    final var value = definitions.get(name);
-
-    if (value == null) return false;
-
-    if (definitions.containsKey(value)) {
-      return value.equals(name) || isProcessingDefinition(value);
-    }
-
-    return false;
   }
 
   private void number() {
@@ -181,9 +176,6 @@ public class ScoreLexer {
     }
 
     var text = source.substring(startPosition, position);
-
-    // Replace defined symbols
-    text = resolveDefinition(text);
 
     addToken(new ScoreToken.NumberToken(text, line, startLinePosition));
   }
@@ -218,6 +210,10 @@ public class ScoreLexer {
   private void addToken(ScoreToken<?> token) {
     // Process DEFINE keyword
     if (token instanceof ScoreToken.KeywordToken && token.getLiteral() == ScoreKeywords.DEFINE) {
+      if (depth > 0) {
+        throw new ScoreParseException("DEFINE cannot be used in a definition", line + baseLine, linePosition + baseLinePosition);
+      }
+
       processDefine();
 
       return;
@@ -265,10 +261,10 @@ public class ScoreLexer {
         continue;
       }
 
-      throw new ScoreParseException("Unexpected character: " + c, line, linePosition);
+      throw new ScoreParseException("Unexpected character: " + c, line + baseLine, linePosition + baseLinePosition);
     }
 
-    while (parameters.size() < 2 && !isAtEnd()) { // wait for value (allowing other than comma and comment, read until the eol)
+    while (!isAtEnd()) {
       final var c = peek();
 
       if (Character.isWhitespace(c)) {
@@ -286,6 +282,24 @@ public class ScoreLexer {
       if (c == ',') {
         advance();
 
+        break;
+      }
+
+      throw new ScoreParseException("Expected comma after parameter: " + parameters.get(0), line + baseLine, linePosition + baseLinePosition);
+    }
+
+    while (parameters.size() < 2 && !isAtEnd()) { // wait for value (allowing other than comma and comment, read until the eol)
+      final var c = peek();
+
+      if (Character.isWhitespace(c)) {
+        advance();
+
+        continue;
+      }
+
+      if (c == '#') {
+        skipComment();
+
         continue;
       }
 
@@ -295,7 +309,7 @@ public class ScoreLexer {
         advance();
       }
 
-      final var text = source.substring(startPosition, position);
+      final var text = source.substring(startPosition, position).trim();
 
       parameters.add(text);
     }
@@ -305,7 +319,7 @@ public class ScoreLexer {
       final var value = parameters.get(1);
 
       if (definitions.containsKey(name)) {
-        throw new ScoreParseException("Symbol redefinition: " + name, line, startLinePosition);
+        throw new ScoreParseException("Symbol redefinition: " + name, line + baseLine, linePosition + baseLinePosition);
       }
 
       if (ScoreToken.KeywordToken.isKeyword(name)) {
@@ -316,7 +330,12 @@ public class ScoreLexer {
         throw new ScoreParseException("Cannot define a note: " + name, line, startLinePosition);
       }
 
-      definitions.put(name, value);
+      ScoreLexer subLexer = createSubLexer(value);
+      final var subTokens = subLexer.tokenize();
+
+      subTokens.removeIf(t -> t instanceof ScoreToken.EOFToken || t instanceof ScoreToken.NewlineToken);
+
+      definitions.put(name, subTokens);
     }
   }
 
@@ -330,7 +349,7 @@ public class ScoreLexer {
     }
   }
 
-  public Map<String, String> getDefinitions() {
+  public Map<String, List<ScoreToken<?>>> getDefinitions() {
     return new HashMap<>(definitions);
   }
 }
