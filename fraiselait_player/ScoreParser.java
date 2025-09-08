@@ -21,6 +21,10 @@ public class ScoreParser {
     return context.getHeader();
   }
 
+  public List<Oscillator> getOscillators() {
+    return context.getOscillators();
+  }
+
   private void parseCommand() {
     final var token = context.peek();
 
@@ -41,32 +45,54 @@ public class ScoreParser {
       final var keyword = ((ScoreToken.KeywordToken) token).getLiteral();
 
       switch (keyword) {
+        case DEFINE:
+          throw new ScoreParseException("BUG: DEFINE keyword should be pre-processed in ScoreLexer", token.getLineNumber(), token.getPosition());
+
         case STOP:
           ScoreCommand.Stop.parse(context);
 
           break;
+
         case REPLAY:
           ScoreCommand.Replay.parse(context);
 
           break;
+
         case BPM:
           ScoreCommand.ChangeBPM.parse(context);
 
           break;
+
         case MEASURE:
           ScoreCommand.ChangeMeasure.parse(context);
 
           break;
+
+        case VOL:
+          ScoreCommand.ChangeVolume.parse(context);
+
+          break;
+
         case PITCH:
           ScoreCommand.Pitch.parse(context);
 
           break;
+
         case VIB:
           ScoreCommand.Vibrato.parse(context);
 
           break;
-        case DEFINE:
-          throw new ScoreParseException("BUG: DEFINE keyword should be pre-processed in ScoreLexer", token.getLineNumber(), token.getPosition());
+
+        case USE:
+          ScoreCommand.Use.parse(context);
+
+          break;
+
+        case OSC:
+          ScoreOscillatorParser.parse(context);
+
+          break;
+
         default:
           throw new ScoreParseException("Unexpected keyword: " + keyword, token.getLineNumber(), token.getPosition());
       }

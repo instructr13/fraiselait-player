@@ -16,13 +16,13 @@ public abstract class ScoreCommand {
     }
 
     public static void parse(ScoreParserContext context) {
-      final var bpmToken = context.expect(ScoreToken.NumberToken.class);
+      final var bpmToken = context.expectNumber();
       context.expectComma();
-      final var measureToken = context.expect(ScoreToken.NumberToken.class);
+      final var measureToken = context.expectNumber();
       context.expectComma();
-      final var offsetToken = context.expect(ScoreToken.NumberToken.class);
+      final var offsetToken = context.expectNumber();
       context.expectComma();
-      final var baseA4FrequencyToken = context.expect(ScoreToken.NumberToken.class);
+      final var baseA4FrequencyToken = context.expectNumber();
       context.expectEndOfCommand();
 
       final var header = new Header(
@@ -67,9 +67,9 @@ public abstract class ScoreCommand {
       final var token = context.expectNoteOrFrequency();
       final var frequency = token.getLiteral();
       context.expectComma();
-      final var durationToken = context.expect(ScoreToken.NumberToken.class);
+      final var durationToken = context.expectNumber();
       context.expectComma();
-      final var nextNoteDurationToken = context.expect(ScoreToken.NumberToken.class);
+      final var nextNoteDurationToken = context.expectNumber();
       context.expectEndOfCommand();
 
       final var playNoteCommand = new PlayNote(
@@ -102,7 +102,7 @@ public abstract class ScoreCommand {
     public static void parse(ScoreParserContext context) {
       context.expect(ScoreToken.RestToken.class);
       context.expectComma();
-      final var durationToken = context.expect(ScoreToken.NumberToken.class);
+      final var durationToken = context.expectNumber();
       context.expectEndOfCommand();
 
       final var restCommand = new Rest(
@@ -127,7 +127,7 @@ public abstract class ScoreCommand {
     public static void parse(ScoreParserContext context) {
       context.expectKeyword(ScoreKeywords.BPM.getLiteral());
       context.expectComma();
-      final var bpmToken = context.expect(ScoreToken.NumberToken.class);
+      final var bpmToken = context.expectNumber();
       context.expectEndOfCommand();
 
       final var changeBPMCommand = new ChangeBPM(
@@ -152,7 +152,7 @@ public abstract class ScoreCommand {
     public static void parse(ScoreParserContext context) {
       context.expectKeyword(ScoreKeywords.MEASURE.getLiteral());
       context.expectComma();
-      final var measureToken = context.expect(ScoreToken.NumberToken.class);
+      final var measureToken = context.expectNumber();
       context.expectEndOfCommand();
 
       final var changeMeasureCommand = new ChangeMeasure(
@@ -177,7 +177,7 @@ public abstract class ScoreCommand {
     public static void parse(ScoreParserContext context) {
       context.expectKeyword(ScoreKeywords.VOL.getLiteral());
       context.expectComma();
-      final var volumeToken = context.expect(ScoreToken.NumberToken.class);
+      final var volumeToken = context.expectNumber();
       context.expectEndOfCommand();
 
       final float volumeValue = volumeToken.getLiteral().floatValue();
@@ -220,18 +220,18 @@ public abstract class ScoreCommand {
       context.expectComma();
       final var afterFrequencyToken = context.expectNoteOrFrequency();
       context.expectComma();
-      final var durationToken = context.expect(ScoreToken.NumberToken.class);
+      final var durationToken = context.expectNumber();
       context.expectComma();
-      final var nextNoteDurationToken = context.expect(ScoreToken.NumberToken.class);
+      final var nextNoteDurationToken = context.expectNumber();
       context.expectComma();
-      final var qualityToken = context.expect(ScoreToken.NumberToken.class);
+      final var qualityToken = context.expectNumber();
 
       final TimingFunctions function;
 
       if (context.hasComma()) {
         context.expectComma();
 
-        final var functionNameToken = context.expect(ScoreToken.IdentifierToken.class);
+        final var functionNameToken = context.expectAnyIdentifier();
 
         if (!TimingFunctions.getNames().contains(functionNameToken.getLexeme().toLowerCase())) {
           throw new ScoreParseException(
@@ -303,11 +303,11 @@ public abstract class ScoreCommand {
       context.expectComma();
       final var frequency2Token = context.expectNoteOrFrequency();
       context.expectComma();
-      final var durationToken = context.expect(ScoreToken.NumberToken.class);
+      final var durationToken = context.expectNumber();
       context.expectComma();
-      final var nextNoteDurationToken = context.expect(ScoreToken.NumberToken.class);
+      final var nextNoteDurationToken = context.expectNumber();
       context.expectComma();
-      final var countToken = context.expect(ScoreToken.NumberToken.class);
+      final var countToken = context.expectNumber();
       context.expectEndOfCommand();
 
       context.addCommand(new Vibrato(
@@ -373,6 +373,38 @@ public abstract class ScoreCommand {
       context.expectEndOfCommand();
 
       context.addCommand(INSTANCE);
+    }
+  }
+
+  public static class Use extends ScoreCommand {
+    private final Oscillator oscillator;
+
+    public Use(Oscillator oscillator) {
+      this.oscillator = oscillator;
+    }
+
+    public static void parse(ScoreParserContext context) {
+      context.expectKeyword(ScoreKeywords.USE.getLiteral());
+      context.expectComma();
+      context.expectKeyword(ScoreKeywords.OSC.getLiteral());
+      context.expectComma();
+
+      final var nameToken = context.expectAnyIdentifier();
+      context.expectEndOfCommand();
+
+      final var name = nameToken.getLexeme();
+
+      if (!context.hasOscillator(name)) {
+        throw new ScoreParseException(
+            "Unknown oscillator: " + name,
+            nameToken.getLineNumber(), nameToken.getPosition());
+      }
+
+      context.addCommand(new Use(context.getOscillator(name)));
+    }
+
+    public Oscillator getOscillator() {
+      return oscillator;
     }
   }
 }

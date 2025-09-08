@@ -1,300 +1,11 @@
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
-
-/**
- * 音符の再生データ
- * ナノ秒単位で変換された再生オフセット・再生時間を保持する。
- */
-class SoundData {
-  final PlaybackData playbackData;
-  final Double frequency;
-  final Double volume;
-  final Duration offset;
-  final Duration duration;
-
-  private SoundData(PlaybackData playbackData, Double frequency, Double volume, Duration offset, Duration duration) {
-    this.playbackData = playbackData;
-    this.frequency = frequency;
-    this.volume = volume;
-    this.offset = offset;
-    this.duration = duration;
-  }
-
-  static SoundData tone(PlaybackData playbackData, double frequency, double volume, Duration offset, Duration duration) {
-    return new SoundData(playbackData, frequency, volume, offset, duration);
-  }
-
-  static SoundData tone(PlaybackData playbackData, double frequency, double volume, Duration offset) {
-    return new SoundData(playbackData, frequency, volume, offset, null);
-  }
-
-  static SoundData noTone(PlaybackData playbackData, Duration offset) {
-    return new SoundData(playbackData, null, null, offset, null);
-  }
-}
-
-/**
- * パート毎の再生データ
- * 実際の演奏では、これと開始時刻 (ナノ秒) を基に行う
- */
-class PlaybackPart {
-  private static final double EPSILON = 1e-6;
-
-  private final AtomicReference<PlaybackData> playbackData;
-  private final List<SoundData> soundData;
-  private final Duration totalDuration;
-  private final boolean loop;
-
-  private PlaybackOutput output;
-
-  public PlaybackPart(Score score) {
-    Objects.requireNonNull(score, "Score must not be null");
-
-    var currentBPM = score.getStartingBPM();
-    var currentMeasure = score.getStartingMeasure();
-    var currentVolume = 1f;
-
-    playbackData = new AtomicReference<>(new PlaybackData(0, currentBPM, currentMeasure, 1));
-
-    var currentMeasureMillis = Notes.toDurationMillis(currentBPM, currentMeasure);
-    var currentOffset = Duration.ofNanos(Math.round(score.getOffset() * 1_000_000));
-
-    final var soundData = new ArrayList<SoundData>();
-    final var commands = score.getCommands();
-    var loop = false;
-
-    for (int i = 0; i < commands.size(); i++) {
-      final var command = commands.get(i);
-
-      if (command instanceof ScoreCommand.Replay) {
-        loop = true;
-
-        continue;
-      }
-
-      if (command instanceof ScoreCommand.ChangeBPM) {
-        currentBPM = ((ScoreCommand.ChangeBPM) command).getBPM();
-        currentMeasureMillis = Notes.toDurationMillis(currentBPM, currentMeasure);
-
-        continue;
-      }
-
-      if (command instanceof ScoreCommand.ChangeMeasure) {
-        currentMeasure = ((ScoreCommand.ChangeMeasure) command).getMeasure();
-        currentMeasureMillis = Notes.toDurationMillis(currentBPM, currentMeasure);
-
-        continue;
-      }
-
-      final var playbackData = new PlaybackData(i, currentBPM, currentMeasure, currentVolume);
-
-      if (command instanceof ScoreCommand.Rest) {
-        soundData.add(SoundData.noTone(playbackData, currentOffset));
-
-        currentOffset = currentOffset.plus(
-            Duration.ofNanos(Math.round(((ScoreCommand.Rest) command).getDuration() * currentMeasureMillis * 1_000_000))
-        );
-
-        continue;
-      }
-
-      if (command instanceof ScoreCommand.Stop) {
-        soundData.add(SoundData.noTone(playbackData, currentOffset));
-
-        break;
-      }
-
-      if (command instanceof ScoreCommand.PlayNote) {
-        final var playNote = (ScoreCommand.PlayNote) command;
-
-        final var duration = playNote.getDuration();
-        final var nextNoteDuration = playNote.getNextNoteDuration();
-
-        final var frequency = playNote.getFrequency().get();
-
-        if (Math.abs(nextNoteDuration - duration) > EPSILON)
-          soundData.add(SoundData.tone(
-              playbackData,
-              frequency,
-              currentVolume,
-              currentOffset,
-              Duration.ofNanos(Math.round(duration * currentMeasureMillis * 1_000_000))
-          ));
-        else
-          soundData.add(SoundData.tone(playbackData, frequency, currentVolume, currentOffset));
-
-        currentOffset = currentOffset.plus(
-            Duration.ofNanos(Math.round(nextNoteDuration * currentMeasureMillis * 1_000_000))
-        );
-
-        continue;
-      }
-
-      if (command instanceof ScoreCommand.Pitch) {
-        final var pitch = (ScoreCommand.Pitch) command;
-
-        final var duration = pitch.getDuration();
-        final var nextNoteDuration = pitch.getNextNoteDuration();
-
-        final var beforeNoteFrequency = pitch.getBeforeFrequency().get();
-        final var afterNoteFrequency = pitch.getAfterFrequency().get();
-
-        final var quality = pitch.getQuality();
-        final var function = pitch.getFunction();
-
-        final List<Double> frequencies = new ArrayList<>();
-
-        frequencies.add(beforeNoteFrequency);
-
-        for (int j = 1; j < quality - 1; j++) {
-          final var t = function.apply((double) j / quality);
-
-          frequencies.add(
-              beforeNoteFrequency * (1 - t) + afterNoteFrequency * t // linear interpolation
-          );
-        }
-
-        frequencies.add(afterNoteFrequency);
-
-        final var fragmentMeasure = currentMeasure * quality;
-        final var fragmentMeasureMillis = Notes.toDurationMillis(currentBPM, fragmentMeasure);
-
-        final var fragmentDuration = Duration.ofNanos(Math.round(duration * fragmentMeasureMillis * 1_000_000));
-
-        for (final var freq : frequencies) {
-          soundData.add(SoundData.tone(
-              playbackData,
-              freq,
-              currentVolume,
-              currentOffset,
-              fragmentDuration
-          ));
-
-          currentOffset = currentOffset.plus(fragmentDuration);
-        }
-
-        if (Math.abs(nextNoteDuration - duration) > EPSILON) {
-          soundData.add(SoundData.noTone(playbackData, currentOffset));
-
-          // skip the remaining duration
-          currentOffset = currentOffset.plus(
-              Duration.ofNanos(Math.round((nextNoteDuration - duration) * currentMeasureMillis * 1_000_000))
-          );
-        }
-
-        continue;
-      }
-
-      if (command instanceof ScoreCommand.Vibrato) {
-        final var vibrato = (ScoreCommand.Vibrato) command;
-
-        final var duration = vibrato.getDuration();
-        final var nextNoteDuration = vibrato.getNextNoteDuration();
-
-        final var note1Frequency = vibrato.getFrequency1().get();
-        final var note2Frequency = vibrato.getFrequency2().get();
-
-        final var count = vibrato.getCount();
-
-        final var fragmentMeasure = currentMeasure * count;
-        final var fragmentMeasureMillis = Notes.toDurationMillis(currentBPM, fragmentMeasure);
-
-        final var frequencies = new ArrayList<Double>();
-
-        for (int j = 0; j < count; j++) {
-          if (j % 2 == 0) {
-            frequencies.add(note1Frequency);
-          } else {
-            frequencies.add(note2Frequency);
-          }
-        }
-
-        final var fragmentDuration = Duration.ofNanos(Math.round(duration * fragmentMeasureMillis * 1_000_000));
-
-        for (final var freq : frequencies) {
-          soundData.add(SoundData.tone(
-              playbackData,
-              freq,
-              currentVolume,
-              currentOffset,
-              fragmentDuration
-          ));
-
-          currentOffset = currentOffset.plus(fragmentDuration);
-        }
-
-        if (Math.abs(nextNoteDuration - duration) > EPSILON) {
-          soundData.add(SoundData.noTone(playbackData, currentOffset));
-
-          // skip the remaining duration
-          currentOffset = currentOffset.plus(
-              Duration.ofNanos(Math.round((nextNoteDuration - duration) * currentMeasureMillis * 1_000_000))
-          );
-        }
-
-        continue;
-      }
-
-      if (command instanceof ScoreCommand.ChangeVolume) {
-        currentVolume = ((ScoreCommand.ChangeVolume) command).getVolume();
-
-        continue;
-      }
-    }
-
-    this.soundData = soundData;
-    this.totalDuration = currentOffset;
-    this.loop = loop;
-  }
-
-  public PlaybackPart(Score score, PlaybackOutput output) {
-    this(score);
-
-    Objects.requireNonNull(output, "Output must not be null");
-
-    this.output = output;
-  }
-
-  public PlaybackData getPlaybackData() {
-    return playbackData.get();
-  }
-
-  void setPlaybackData(PlaybackData value) {
-    playbackData.set(value);
-  }
-
-  public PlaybackOutput getOutput() {
-    return output;
-  }
-
-  public void setOutput(PlaybackOutput output) {
-    this.output = output;
-  }
-
-  public boolean hasOutput() {
-    return output != null;
-  }
-
-  public List<SoundData> getSoundData() {
-    return soundData;
-  }
-
-  public Duration getTotalDuration() {
-    return totalDuration;
-  }
-
-  public boolean isLoop() {
-    return loop;
-  }
-}
 
 class PlaybackState {
   public final AtomicBoolean isPlaying = new AtomicBoolean(false);
@@ -366,6 +77,14 @@ public class PlayerSession implements AutoCloseable {
 
   public float getVolumeFor(int partIndex) {
     return getPlaybackDataFor(partIndex).getVolume();
+  }
+
+  public Oscillator getOscillatorFor(int partIndex) {
+    return getPlaybackDataFor(partIndex).getOscillator();
+  }
+
+  public float getActualVolumeFor(int partIndex) {
+    return executor.getParts().get(partIndex).getActualVolume();
   }
 
   /**
@@ -526,11 +245,15 @@ public class PlayerSession implements AutoCloseable {
 
         accurateSleep(targetTime);
 
+        if (soundData.waveformType != null) {
+          output.changeWaveform(soundData.waveformType);
+        }
+
         if (soundData.frequency != null) {
           if (soundData.duration != null) {
-            output.tone(soundData.frequency, 1.0, soundData.duration);
+            output.tone(soundData.frequency, soundData.actualVolume, soundData.duration);
           } else {
-            output.tone(soundData.frequency, 1.0);
+            output.tone(soundData.frequency, soundData.actualVolume);
           }
 
           if (!it.hasNext() && part.isLoop())

@@ -5,6 +5,12 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 enum ScoreKeywords {
+  // Pre-processed keywords
+  DEFINE("DEFINE"),
+
+  // Commands
+  USE("USE"),
+
   STOP("STOP"),
   REPLAY("REPLAY"),
   BPM("BPM"),
@@ -12,7 +18,13 @@ enum ScoreKeywords {
   VOL("VOL"),
   PITCH("PITCH"),
   VIB("VIB"),
-  DEFINE("DEFINE");
+
+  END("END"),
+
+  // Oscillator
+  OSC("OSC")
+
+  ;
 
   public static final Set<String> LITERALS =
       Arrays.stream(ScoreKeywords.values()).map(ScoreKeywords::getLiteral).collect(Collectors.toUnmodifiableSet());

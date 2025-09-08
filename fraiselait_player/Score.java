@@ -15,12 +15,15 @@ public class Score {
   private final double baseA4Frequency;
   private final List<ScoreCommand> commands;
 
-  public Score(float startingBPM, int startingMeasure, float offset, double baseA4Frequency, List<ScoreCommand> commands) {
+  private final List<Oscillator> oscillators;
+
+  private Score(float startingBPM, int startingMeasure, float offset, double baseA4Frequency, List<ScoreCommand> commands, List<Oscillator> oscillators) {
     this.startingBPM = startingBPM;
     this.startingMeasure = startingMeasure;
     this.offset = offset;
     this.baseA4Frequency = baseA4Frequency;
     this.commands = commands;
+    this.oscillators = oscillators;
   }
 
   /**
@@ -41,6 +44,8 @@ public class Score {
         .skip(1) // skip first prefix line
         .collect(Collectors.joining("\n"));
 
+    if (content.isEmpty()) throw new IllegalArgumentException();
+
     final var lexer = new ScoreLexer(content);
     final var tokens = lexer.tokenize();
 
@@ -54,7 +59,9 @@ public class Score {
     final var offset = header.getOffset();
     final var baseA4Frequency = header.getBaseA4Frequency();
 
-    return new Score(bpm, measure, offset, baseA4Frequency, commands);
+    final var oscillators = parser.getOscillators();
+
+    return new Score(bpm, measure, offset, baseA4Frequency, commands, oscillators);
   }
 
   /**
@@ -84,5 +91,13 @@ public class Score {
 
   public List<ScoreCommand> getCommands() {
     return new ArrayList<>(commands);
+  }
+
+  public List<Oscillator> getOscillators() {
+    return oscillators;
+  }
+
+  public Oscillator getStartingOscillator() {
+    return oscillators.stream().filter(o -> o.getName().equals("default")).findFirst().orElseThrow();
   }
 }

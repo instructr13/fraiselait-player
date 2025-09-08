@@ -306,6 +306,8 @@ class MultiTrackPlayer {
   private float[] autoplayBPM;
   private int[] autoplayMeasure;
   private double[] autoplayProgress;
+  private double[] autoplayVolume;
+  private String[] autoplayOscillator;
   private boolean opened = false;
 
   public MultiTrackPlayer(PlayerSession session) {
@@ -314,11 +316,15 @@ class MultiTrackPlayer {
     this.autoplayBPM = new float[scores.size()];
     this.autoplayMeasure = new int[scores.size()];
     this.autoplayProgress = new double[scores.size()];
+    this.autoplayVolume = new double[scores.size()];
+    this.autoplayOscillator = new String[scores.size()];
 
     for (int i = 0; i < scores.size(); i++) {
       autoplayBPM[i] = scores.get(i).getStartingBPM();
       autoplayMeasure[i] = scores.get(i).getStartingMeasure();
       autoplayProgress[i] = 0.0;
+      autoplayVolume[i] = 1f;
+      autoplayOscillator[i] = scores.get(i).getStartingOscillator().getName();
     }
   }
 
@@ -389,7 +395,20 @@ class MultiTrackPlayer {
       if (autoplayBPM[trackIndex] != newBPM)
         autoplayBPM[trackIndex] = newBPM;
 
-      autoplayMeasure[trackIndex] = session.getMeasureFor(trackIndex);
+      final var newMeasure = session.getMeasureFor(trackIndex);
+
+      if (autoplayMeasure[trackIndex] != newMeasure)
+        autoplayMeasure[trackIndex] = newMeasure;
+
+      final var newVolume = session.getVolumeFor(trackIndex);
+
+      if (autoplayVolume[trackIndex] != newVolume)
+        autoplayVolume[trackIndex] = newVolume;
+
+      final var newOscillatorName = session.getOscillatorFor(trackIndex).getName();
+
+      if (!autoplayOscillator[trackIndex].equals(newOscillatorName))
+        autoplayOscillator[trackIndex] = newOscillatorName;
     }
 
     inner.noStroke();
@@ -471,6 +490,12 @@ class MultiTrackPlayer {
       r.drawText(Integer.toString(vib.getCount()), new Point(lineOffset.x + lineSize.x - 90, textOffset));
       r.drawText(Float.toString(vib.getDuration()), new Point(lineOffset.x + lineSize.x - 60, textOffset));
       r.drawText(Float.toString(vib.getNextNoteDuration()), new Point(lineOffset.x + lineSize.x - 10, textOffset));
+    } else if (command instanceof ScoreCommand.Use) {
+      final var use = (ScoreCommand.Use) command;
+
+      r.drawText("Use", new Point(lineOffset.x + 10, textOffset), ColorScheme.Teal);
+      inner.textAlign(RIGHT, CENTER);
+      r.drawText(use.getOscillator().getName(), new Point(lineOffset.x + lineSize.x - 10, textOffset));
     }
 
     inner.textAlign(LEFT, CENTER);
@@ -489,12 +514,15 @@ class MultiTrackPlayer {
 
     final var infoY = topMargin + lineHeight * visibleLines + progressBarHeight + 20;
 
-    final var infoText = String.format("BPM: %s, Measure: %d (%.1f%%)\nOffset: %s, A4=%sHz",
+    final var infoText = String.format("BPM: %s, Measure: %d (%.1f%%), Vol: %.1f%%\nOffset: %s, A4=%sHz, Osc: %s",
         Float.toString(autoplayBPM[trackIndex]),
         autoplayMeasure[trackIndex],
+        autoplayVolume[trackIndex] * 100,
         autoplayProgress[trackIndex] * 100,
         Float.toString(score.getOffset()),
-        Double.toString(score.getBaseA4Frequency()));
+        Double.toString(score.getBaseA4Frequency()),
+        autoplayOscillator[trackIndex]
+        );
         
     r.drawText(infoText, new Point(xOffset, infoY));
   }

@@ -1,19 +1,33 @@
+import dev.wycey.mido.fraiselait.builtins.WaveformType;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class ScoreParserContext {
+  private static final Oscillator DEFAULT_OSCILLATOR = Oscillator.createConstantVolumeOscillator("default", WaveformType.SQUARE, 1);
+
   private final List<ScoreToken<?>> tokens;
   private final Map<String, String> definitions = new HashMap<>();
   private final List<ScoreCommand> commands = new ArrayList<>();
+
   private int position;
+
   private ScoreCommand.Header header;
+
   private boolean isFinished = false;
+
+  // Oscillator registry
+  private final Map<String, Oscillator> oscillatorsByName = new HashMap<>();
+  private final List<Oscillator> oscillators = new ArrayList<>();
 
   public ScoreParserContext(List<ScoreToken<?>> tokens) {
     this.tokens = tokens;
     this.position = 0;
+
+    // Add default oscillator
+    addOscillator(DEFAULT_OSCILLATOR);
   }
 
   public ScoreToken<?> peek() {
@@ -57,6 +71,27 @@ public class ScoreParserContext {
     }
 
     return token;
+  }
+
+  public ScoreToken.IdentifierToken expectIdentifier(String name) {
+    ScoreToken.IdentifierToken token = expect(ScoreToken.IdentifierToken.class);
+
+    if (!token.getLexeme().equalsIgnoreCase(name)) {
+      throw new ScoreParseException(
+          "Expected identifier %s but got %s".formatted(
+              name, token.getLexeme()
+          ), token.getLineNumber(), token.getPosition());
+    }
+
+    return token;
+  }
+
+  public ScoreToken.IdentifierToken expectAnyIdentifier() {
+    return expect(ScoreToken.IdentifierToken.class);
+  }
+
+  public ScoreToken.NumberToken expectNumber() {
+    return expect(ScoreToken.NumberToken.class);
   }
 
   public ScoreToken.CommaToken expectComma() {
@@ -161,6 +196,29 @@ public class ScoreParserContext {
 
   public List<ScoreCommand> getCommands() {
     return commands;
+  }
+
+  public void addOscillator(Oscillator osc) {
+    final var name = osc.getName();
+
+    if (oscillatorsByName.containsKey(name)) {
+      throw new ScoreParseException("Oscillator already defined: " + name, 0, 0);
+    }
+
+    oscillatorsByName.put(name, osc);
+    oscillators.add(osc);
+  }
+
+  public boolean hasOscillator(String name) {
+    return oscillatorsByName.containsKey(name);
+  }
+
+  public Oscillator getOscillator(String name) {
+    return oscillatorsByName.get(name);
+  }
+
+  public List<Oscillator> getOscillators() {
+    return oscillators;
   }
 
   public void validate() {
