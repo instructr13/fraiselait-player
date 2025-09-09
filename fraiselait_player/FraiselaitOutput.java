@@ -1,3 +1,4 @@
+import dev.wycey.mido.fraiselait.ConnectionStatus;
 import dev.wycey.mido.fraiselait.builtins.FraiselaitDevice;
 import dev.wycey.mido.fraiselait.builtins.WaveformType;
 import dev.wycey.mido.fraiselait.builtins.commands.CommandBuilder;
@@ -16,6 +17,10 @@ public class FraiselaitOutput implements PlaybackOutput {
 
   public FraiselaitDevice getDevice() {
     return device;
+  }
+
+  public boolean isUsable() {
+    return device.getStatus() == ConnectionStatus.CONNECTED;
   }
 
   @Override

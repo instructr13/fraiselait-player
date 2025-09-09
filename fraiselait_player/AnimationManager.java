@@ -1,3 +1,5 @@
+import processing.core.PApplet;
+
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -11,7 +13,7 @@ class AnimationHandle {
   }
 }
 
-public class AnimationManager {
+public class AnimationManager implements Component {
   private final CurrentFrame currentFrame;
   private final Queue<AnimationTimeline> queue = new LinkedList<>();
   private final Map<AnimationTimeline, AnimationHandle> timelines = new HashMap<>();
@@ -62,5 +64,10 @@ public class AnimationManager {
         it.remove();
       }
     }
+  }
+
+  @Override
+  public void draw(PApplet a, ComponentsRegistry r) {
+    update();
   }
 }

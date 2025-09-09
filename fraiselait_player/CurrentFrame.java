@@ -1,13 +1,13 @@
 import processing.core.PApplet;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 public class CurrentFrame {
   private final PApplet parent;
   private final LocalDateTime startTime;
-  private Integer lastFrame = null;
-  private Duration lastFrameTime = Duration.ZERO;
+  private Instant lastFrameTime = null;
 
   public CurrentFrame(PApplet parent) {
     this.parent = parent;
@@ -20,16 +20,12 @@ public class CurrentFrame {
   }
 
   public Duration getLastFrameTime() {
-    return lastFrameTime;
+    return Duration.ofMillis(lastFrameTime.toEpochMilli());
   }
 
   public void update() {
     final var now = parent.millis();
 
-    if (lastFrame != null) {
-      lastFrameTime = Duration.ofMillis(now - lastFrame);
-    }
-
-    lastFrame = now;
+    lastFrameTime = Instant.ofEpochMilli(now);
   }
 }
